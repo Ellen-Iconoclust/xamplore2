@@ -186,54 +186,65 @@ function shuffle(array) {
 
 // 1. LOGIN
 app.post('/api/login', (req, res) => {
-    const { name, pattern, password } = req.body;
+    try {
+        console.log("Login Request Body:", req.body);
+        const { name, pattern, password } = req.body;
 
-    if (!name || !password) {
-        return res.status(400).json({ error: "Missing fields" });
-    }
+        if (!name || !password) {
+            console.log("Missing fields");
+            return res.status(400).json({ error: "Missing fields" });
+        }
 
-    // ADMIN LOGIN CHECK
-    if (name === ADMIN_CREDS.name && password === ADMIN_CREDS.password) {
+        // ADMIN LOGIN CHECK
+        if (name === ADMIN_CREDS.name && password === ADMIN_CREDS.password) {
+            console.log("Admin login success");
+            const sessionData = {
+                name: "Admin",
+                role: "admin",
+                status: "ready"
+            };
+            res.cookie('session', sessionData, {
+                httpOnly: true,
+                signed: true,
+                maxAge: 7200000
+            });
+            return res.json({ success: true, message: "Admin Logged In", role: 'admin' });
+        }
+
+        // STUDENT LOGIN CHECK
+        if (!pattern) {
+            console.log("Missing pattern for student");
+            return res.status(400).json({ error: "Missing pattern" });
+        }
+
+        if (PASSWORDS[pattern] !== password) {
+            console.log("Invalid password");
+            return res.status(401).json({ error: "Invalid password for selected pattern" });
+        }
+
+        console.log("Student login success");
+        // Set signed cookie with session data
+        // Max Age: 2 hours
         const sessionData = {
-            name: "Admin",
-            role: "admin",
-            status: "ready"
+            name,
+            pattern,
+            role: "student",
+            status: 'ready', // ready, started, completed, failed
+            score: null,
+            startTime: null
         };
+
         res.cookie('session', sessionData, {
             httpOnly: true,
             signed: true,
             maxAge: 7200000
         });
-        return res.json({ success: true, message: "Admin Logged In", role: 'admin' });
+
+        res.json({ success: true, message: "Logged in", role: 'student' });
+    } catch (e) {
+        console.error("Login Error:", e);
+        res.status(500).json({ error: "Internal Server Error: " + e.message });
     }
-
-    // STUDENT LOGIN CHECK
-    if (!pattern) {
-        return res.status(400).json({ error: "Missing pattern" });
-    }
-
-    if (PASSWORDS[pattern] !== password) {
-        return res.status(401).json({ error: "Invalid password for selected pattern" });
-    }
-
-    // Set signed cookie with session data
-    // Max Age: 2 hours
-    const sessionData = {
-        name,
-        pattern,
-        role: "student",
-        status: 'ready', // ready, started, completed, failed
-        score: null,
-        startTime: null
-    };
-
-    res.cookie('session', sessionData, {
-        httpOnly: true,
-        signed: true,
-        maxAge: 7200000
-    });
-
-    res.json({ success: true, message: "Logged in", role: 'student' });
 });
 
 // 2. CHECK STATUS (For page reloads)
