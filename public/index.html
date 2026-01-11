@@ -353,7 +353,8 @@ let studentName = "";
 let studentPattern = "";
 let adminAuthenticated = false;
 let adminPollingInterval = null;
-let timerPollingInterval = null;
+let studentTimerInterval = null;
+let lastTimerState = { active: false }; // Track last timer state to prevent flickering
 
 // Init
 document.addEventListener('DOMContentLoaded', () => {
@@ -369,7 +370,16 @@ function showSection(id){
   el(id).classList.remove("hidden");
   el('mobileMenu').classList.add("hidden");
   if(id === 'hangman') initializeHangman();
-  if(id === 'admin' && adminAuthenticated) loadAdminDashboard();
+  if(id === 'admin' && adminAuthenticated) {
+    loadAdminDashboard();
+    startAdminPolling();
+  } else if(id !== 'admin' && adminAuthenticated) {
+    // Stop admin polling when leaving admin section
+    if (adminPollingInterval) {
+      clearInterval(adminPollingInterval);
+      adminPollingInterval = null;
+    }
+  }
 }
 
 // --- ADMIN FUNCTIONS ---
@@ -412,10 +422,6 @@ function adminLogout() {
   if (adminPollingInterval) {
     clearInterval(adminPollingInterval);
     adminPollingInterval = null;
-  }
-  if (timerPollingInterval) {
-    clearInterval(timerPollingInterval);
-    timerPollingInterval = null;
   }
 }
 
@@ -463,13 +469,26 @@ function updateTimerDisplay(timer) {
     activeInfoEl.classList.remove('hidden');
     
     // Calculate remaining time
-    const remainingMs = timer.endTime - Date.now();
+    const now = Date.now();
+    let remainingMs = 0;
+    
+    if (timer.paused) {
+      remainingMs = timer.pauseRemaining;
+    } else if (timer.endTime) {
+      remainingMs = timer.endTime - now;
+    }
+    
     if (remainingMs > 0) {
       const minutes = Math.floor(remainingMs / 60000);
       const seconds = Math.floor((remainingMs % 60000) / 1000);
       remainingEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     } else {
       remainingEl.textContent = '00:00';
+      // If timer has expired, update status
+      if (!timer.paused && timer.endTime && timer.endTime <= now) {
+        statusEl.textContent = 'Expired';
+        statusEl.className = 'ml-2 px-2 py-1 rounded text-sm font-medium bg-red-100 text-red-800';
+      }
     }
   } else {
     statusEl.textContent = 'Not Active';
@@ -616,10 +635,7 @@ async function adminEndExam(studentName) {
 
 function startAdminPolling() {
   if (adminPollingInterval) clearInterval(adminPollingInterval);
-  adminPollingInterval = setInterval(loadAdminDashboard, 5000); // Update every 5 seconds
-  
-  if (timerPollingInterval) clearInterval(timerPollingInterval);
-  timerPollingInterval = setInterval(checkGlobalTimer, 1000); // Check timer every second
+  adminPollingInterval = setInterval(loadAdminDashboard, 3000); // Update every 3 seconds
 }
 
 // --- BACKEND API INTERACTION ---
@@ -686,13 +702,32 @@ async function checkGlobalTimer() {
     const res = await fetch('/api/timer/status');
     const data = await res.json();
     
+    // Only update if state changed significantly to prevent flickering
+    const shouldUpdate = data.active !== lastTimerState.active || 
+                         data.paused !== lastTimerState.paused ||
+                         (data.endTime && Math.abs((data.endTime - Date.now()) - (lastTimerState.endTime || 0)) > 1000);
+    
+    if (!shouldUpdate && lastTimerState.active === data.active && data.active === false) {
+      return; // Skip update to prevent flickering
+    }
+    
+    lastTimerState = { ...data };
+    
     if (data.active) {
       // Show timer on exam page if we're in exam
       if (el('exam') && !el('exam').classList.contains('hidden')) {
         el('globalTimerDisplay').classList.remove('hidden');
         
         // Update timer display
-        const remainingMs = data.endTime - Date.now();
+        const now = Date.now();
+        let remainingMs = 0;
+        
+        if (data.paused) {
+          remainingMs = data.pauseRemaining || 0;
+        } else if (data.endTime) {
+          remainingMs = data.endTime - now;
+        }
+        
         if (remainingMs > 0) {
           const minutes = Math.floor(remainingMs / 60000);
           const seconds = Math.floor((remainingMs % 60000) / 1000);
@@ -710,7 +745,10 @@ async function checkGlobalTimer() {
         }
       }
     } else {
-      el('globalTimerDisplay').classList.add('hidden');
+      // Only hide if it was previously shown
+      if (!el('globalTimerDisplay').classList.contains('hidden')) {
+        el('globalTimerDisplay').classList.add('hidden');
+      }
     }
   } catch (e) {
     // Silent fail for timer check
@@ -734,6 +772,10 @@ async function startExam() {
             
             renderQuestion();
             startMonitoring();
+            
+            // Start checking timer every second
+            if (studentTimerInterval) clearInterval(studentTimerInterval);
+            studentTimerInterval = setInterval(checkGlobalTimer, 1000);
             checkGlobalTimer(); // Initial check
         } else {
             alert(data.error);
@@ -769,6 +811,16 @@ function renderQuestion() {
     }
 }
 
+async function checkIfCanSubmit() {
+    try {
+        const res = await fetch('/api/timer/can-submit');
+        const data = await res.json();
+        return data.canSubmit;
+    } catch (e) {
+        return true; // If there's an error, allow submission
+    }
+}
+
 async function nextQuestion() {
     const sel = document.querySelector("input[name='ans']:checked");
     if (!sel) return alert("Please select an option");
@@ -776,25 +828,20 @@ async function nextQuestion() {
     userAnswers.push(sel.value);
     currentIndex++;
     
-    // Check if this is the last question and if global timer is active
+    // Check if this is the last question
     const isLastQuestion = currentIndex >= questions.length - 1;
     
     if (isLastQuestion) {
-        // Check if global timer is active
-        try {
-            const timerRes = await fetch('/api/timer/status');
-            const timerData = await timerRes.json();
-            
-            if (timerData.active && !timerData.paused && timerData.endTime > Date.now()) {
-                // Timer is active, lock the final question
-                alert("Global timer is active. Please wait until the timer ends to submit your exam.");
-                currentIndex--; // Go back to last question
-                userAnswers.pop(); // Remove the last answer
-                renderQuestion();
-                return;
-            }
-        } catch (e) {
-            console.error("Error checking timer status:", e);
+        // For the last question, check if we can submit
+        const canSubmit = await checkIfCanSubmit();
+        
+        if (!canSubmit) {
+            // Timer is active, lock the final question
+            alert("Global timer is active. Please wait until the timer ends to submit your exam.");
+            currentIndex--; // Go back to last question
+            userAnswers.pop(); // Remove the last answer
+            renderQuestion();
+            return;
         }
     }
     
@@ -823,6 +870,12 @@ async function submitExam() {
             finalResults = data.results; // For PDF
             showResultScreen(data.score, data.total);
             stopMonitoring();
+            
+            // Stop timer checking
+            if (studentTimerInterval) {
+                clearInterval(studentTimerInterval);
+                studentTimerInterval = null;
+            }
         } else {
             alert("Submission failed: " + data.error);
         }
@@ -885,6 +938,12 @@ function failTestUI() {
     el('login').classList.add('hidden');
     el('failed').classList.remove('hidden');
     try { document.exitFullscreen(); } catch(e){}
+    
+    // Stop timer checking
+    if (studentTimerInterval) {
+        clearInterval(studentTimerInterval);
+        studentTimerInterval = null;
+    }
 }
 
 async function secondChance() {
