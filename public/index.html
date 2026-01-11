@@ -1,724 +1,971 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <title>Xamplore – Secure Exam (Backend Integrated)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8">
+<title>Xamplore – Secure Exam (Backend Integrated)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Tailwind -->
-  <script src="https://cdn.tailwindcss.com"></script>
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- jsPDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-  <!-- Lucide -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+<!-- Lucide -->
+<script src="https://unpkg.com/lucide@latest"></script>
 
-  <!-- Socket.io -->
-  <script src="/socket.io/socket.io.js"></script>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
 
-  <!-- Fonts -->
-  <link
-    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Montserrat:wght@700;900&display=swap"
-    rel="stylesheet">
-
-  <style>
-    * {
-      user-select: none;
-      -webkit-user-select: none;
-    }
-
-    body {
-      font-family: 'Poppins', sans-serif;
-      overflow-x: hidden;
-    }
-
-    .brand {
-      font-family: 'Montserrat', sans-serif;
-    }
-
-    input[type="password"] {
-      user-select: none;
-      -webkit-user-select: none;
-    }
-  </style>
+<style>
+* { user-select:none; -webkit-user-select:none; }
+body { font-family:'Poppins',sans-serif; overflow-x: hidden; }
+.brand { font-family:'Montserrat',sans-serif; }
+input[type="password"] { user-select: none; -webkit-user-select: none; }
+.timer-running { animation: pulse 2s infinite; }
+@keyframes pulse {
+  0%, 100% { background-color: #fef3c7; }
+  50% { background-color: #fde68a; }
+}
+</style>
 </head>
 
 <body class="bg-white text-gray-800 min-h-screen flex flex-col">
 
-  <!-- WELCOME POPUP -->
-  <div id="welcomePopup" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative">
-      <button onclick="closeWelcomePopup()" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700">
-        <i data-lucide="x"></i>
-      </button>
-      <div class="flex items-center gap-2 mb-4">
-        <i data-lucide="graduation-cap" class="text-emerald-600"></i>
-        <h3 class="text-xl font-bold text-emerald-600">Welcome to Xamplore!</h3>
-      </div>
-      <p class="text-gray-600 mb-4">
-        Ready to test your knowledge? Head over to the <span class="font-semibold text-emerald-600">Test</span> section
-        in the menu to take secure exams.
-      </p>
-      <div class="text-sm text-gray-500">
-        <i data-lucide="info" class="inline w-4 h-4 mr-1"></i>
-        Platform Version: <span class="font-bold">Xam1.0 (Server)</span>
-      </div>
+<!-- WELCOME POPUP -->
+<div id="welcomePopup" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative">
+    <button onclick="closeWelcomePopup()" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700">
+      <i data-lucide="x"></i>
+    </button>
+    <div class="flex items-center gap-2 mb-4">
+      <i data-lucide="graduation-cap" class="text-emerald-600"></i>
+      <h3 class="text-xl font-bold text-emerald-600">Welcome to Xamplore!</h3>
+    </div>
+    <p class="text-gray-600 mb-4">
+      Ready to test your knowledge? Head over to the <span class="font-semibold text-emerald-600">Test</span> section in the menu to take secure exams.
+    </p>
+    <div class="text-sm text-gray-500">
+      <i data-lucide="info" class="inline w-4 h-4 mr-1"></i>
+      Platform Version: <span class="font-bold">Xam1.0 (Server)</span>
     </div>
   </div>
+</div>
 
-  <!-- NAV -->
-  <nav class="border-b shadow-sm sticky top-0 bg-white z-40">
-    <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-      <div class="flex items-center gap-2 brand text-2xl font-extrabold text-emerald-600">
-        <i data-lucide="graduation-cap"></i> Xamplore
-        <span class="text-xs font-normal bg-emerald-100 text-emerald-700 px-2 py-1 rounded">v2.0</span>
+<!-- NAV -->
+<nav class="border-b shadow-sm sticky top-0 bg-white z-40">
+  <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+    <div class="flex items-center gap-2 brand text-2xl font-extrabold text-emerald-600">
+      <i data-lucide="graduation-cap"></i> Xamplore
+      <span class="text-xs font-normal bg-emerald-100 text-emerald-700 px-2 py-1 rounded">v2.0</span>
+    </div>
+
+    <div class="hidden md:flex gap-8 font-semibold">
+      <button onclick="showSection('home')">Home</button>
+      <button onclick="showSection('test')">Test</button>
+      <button onclick="showSection('hangman')">Hangman</button>
+      <button onclick="showSection('admin')">Admin</button>
+      <button onclick="showSection('about')">About</button>
+    </div>
+
+    <button class="md:hidden" onclick="toggleMenu()">
+      <i data-lucide="menu"></i>
+    </button>
+  </div>
+
+  <div id="mobileMenu" class="hidden md:hidden px-6 pb-4 space-y-3 font-semibold">
+    <button onclick="showSection('home')" class="block">Home</button>
+    <button onclick="showSection('test')" class="block">Test</button>
+    <button onclick="showSection('hangman')" class="block">Hangman</button>
+    <button onclick="showSection('admin')" class="block">Admin</button>
+    <button onclick="showSection('about')" class="block">About</button>
+  </div>
+</nav>
+
+<!-- HOME -->
+<section id="home" class="py-20 text-center">
+  <h1 class="text-4xl font-extrabold brand text-emerald-600">
+    Smarter Exams
+  </h1>
+  <p class="mt-3 text-xl font-semibold">Built for SRCAS Students</p>
+  <p class="mt-6 max-w-xl mx-auto text-gray-600">
+    Xamplore is a secure online examination platform designed to
+    reduce malpractice and ensure fair evaluation.
+  </p>
+</section>
+
+<!-- TEST -->
+<section id="test" class="hidden py-16">
+  <div class="max-w-xl mx-auto bg-white p-6 rounded-xl shadow-xl">
+
+    <!-- Global Timer Display (Visible during exam) -->
+    <div id="globalTimerDisplay" class="hidden mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+      <div class="flex items-center justify-center gap-2">
+        <i data-lucide="clock" class="text-yellow-600"></i>
+        <span class="font-bold text-yellow-700">Global Timer Active:</span>
+        <span id="globalTimer" class="font-mono text-xl font-bold text-yellow-800">--:--</span>
       </div>
+      <p class="text-xs text-yellow-600 mt-1">Final question locked until timer ends</p>
+    </div>
 
-      <div class="hidden md:flex gap-8 font-semibold">
-        <button onclick="showSection('home')">Home</button>
-        <button onclick="showSection('test')">Test</button>
-        <button onclick="showSection('about')">About</button>
-      </div>
+    <!-- Loading State -->
+    <div id="loader" class="hidden text-center py-10">
+      <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mx-auto"></div>
+      <p class="mt-3 text-emerald-600 font-semibold">Connecting to Server...</p>
+    </div>
 
-      <button class="md:hidden" onclick="toggleMenu()">
-        <i data-lucide="menu"></i>
+    <div id="login">
+      <h2 class="text-2xl font-bold mb-4 text-emerald-600">Exam Login</h2>
+      <input id="nameInput" class="w-full p-2 mb-3 border rounded" placeholder="Your Name">
+      <select id="patternSelect" class="w-full p-2 mb-3 border rounded">
+        <option value="">Select Pattern</option>
+        <option value="A">Pattern A</option>
+        <option value="B">Pattern B</option>
+        <option value="C">Pattern C</option>
+      </select>
+      <input id="passwordInput" type="password" class="w-full p-2 mb-4 border rounded" placeholder="Pattern Password">
+      <button onclick="verifyLogin()" class="w-full bg-emerald-600 text-white p-2 rounded font-semibold">
+        Continue
       </button>
     </div>
 
-    <div id="mobileMenu" class="hidden md:hidden px-6 pb-4 space-y-3 font-semibold">
-      <button onclick="showSection('home')" class="block">Home</button>
-      <button onclick="showSection('test')" class="block">Test</button>
-      <button onclick="showSection('about')" class="block">About</button>
+    <div id="rules" class="hidden">
+      <h2 class="text-xl font-bold text-emerald-600 mb-3">Rules & Regulations</h2>
+      <ul class="list-disc pl-5 text-sm space-y-2">
+        <li>No tab switching</li>
+        <li>No exiting fullscreen</li>
+        <li>No screenshots or copy</li>
+        <li>Violations end the test</li>
+      </ul>
+      <button onclick="startExam()" class="mt-4 w-full bg-emerald-600 text-white p-2 rounded">
+        I Agree & Start Exam
+      </button>
     </div>
-  </nav>
 
-  <!-- TIMER HUD -->
-  <div id="timerDisplay"
-    class="hidden fixed top-20 right-5 bg-black bg-opacity-80 text-white px-4 py-2 rounded-lg font-mono text-xl z-50 shadow-lg border border-emerald-500">
-    Time Left: <span id="timeRemaining">00:00</span>
+    <div id="exam" class="hidden">
+      <div id="questionBox"></div>
+      <button id="nextButton" onclick="nextQuestion()" class="mt-4 w-full bg-emerald-600 text-white p-2 rounded">
+        Next
+      </button>
+    </div>
+
+    <div id="failed" class="hidden text-center">
+      <h2 class="text-xl font-bold text-red-600">Test Failed</h2>
+      <p class="text-sm text-gray-600 mb-2">Malpractice detected or window focus lost.</p>
+      <div class="relative">
+      <input
+        id="secondPass"
+        type="password"
+        autocomplete="new-password"
+        class="w-full p-2 mt-3 border rounded"
+        placeholder="Second Chance Code"
+      />
+      </div>
+      <button onclick="secondChance()" class="mt-3 w-full bg-emerald-600 text-white p-2 rounded">
+        Retry Exam
+      </button>
+      <div id="retryMsg" class="text-red-500 text-xs mt-2"></div>
+    </div>
+
+    <div id="result" class="hidden text-center">
+      <h2 class="text-2xl font-bold text-emerald-600">Test Completed</h2>
+      <p id="resultText" class="mt-3"></p>
+      <button onclick="downloadPDF()" class="mt-4 bg-emerald-600 text-white p-2 rounded">
+        Download PDF
+      </button>
+    </div>
+
   </div>
+</section>
 
-  <!-- ADMIN PANEL (Styled) -->
-  <section id="adminPanel" class="hidden min-h-screen bg-gray-50 flex flex-col items-center py-10">
-    <div class="max-w-full w-full px-6">
-      <div class="bg-white rounded-xl shadow-2xl p-8 max-w-2xl mx-auto border-t-4 border-emerald-600">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">Admin Dashboard</h1>
-        <p class="text-gray-500 mb-8">Control exam sessions securely.</p>
+<!-- HANGMAN -->
+<section id="hangman" class="hidden py-16">
+  <div class="max-w-4xl mx-auto px-4">
+    <h2 class="text-3xl font-bold text-center text-emerald-600 mb-8">Tech Hangman</h2>
+    <div class="flex justify-center"><p class="text-gray-500">(Game functionality preserved)</p></div>
+    <div class="bg-white p-6 rounded-xl shadow-lg border mt-4 text-center">
+        <div id="hangmanWordDisplay" class="text-2xl font-mono mb-4"></div>
+        <div id="letterButtons" class="flex flex-wrap gap-2 justify-center"></div>
+        <button onclick="initializeHangman()" class="mt-4 bg-emerald-600 text-white px-4 py-2 rounded">Start Game</button>
+    </div>
+  </div>
+</section>
 
-        <div class="grid grid-cols-1 gap-6">
-          <!-- Timer Control -->
-          <div class="bg-emerald-50 p-6 rounded-lg border border-emerald-100">
-            <h3 class="text-lg font-bold text-emerald-800 mb-3 flex items-center gap-2">
-              <i data-lucide="timer"></i> Global Timer
-            </h3>
-            <div class="flex items-center gap-4">
-              <input id="examDuration" type="number" value="30"
-                class="border-2 border-emerald-200 p-2 rounded w-24 text-center font-bold text-lg" min="1"
-                placeholder="Mins">
-              <span class="font-semibold text-emerald-700">Minutes</span>
+<!-- ADMIN PAGE -->
+<section id="admin" class="hidden py-16">
+  <div class="max-w-4xl mx-auto px-4">
+    <h2 class="text-3xl font-bold text-center text-emerald-600 mb-8">Admin Dashboard</h2>
+    
+    <!-- Admin Login -->
+    <div id="adminLogin" class="bg-white p-6 rounded-xl shadow-lg border max-w-md mx-auto">
+      <h3 class="text-xl font-bold text-gray-800 mb-4">Admin Authentication</h3>
+      <input id="adminName" class="w-full p-2 mb-3 border rounded" placeholder="Admin Name" value="Ellen@SRCAS">
+      <input id="adminPassword" type="password" class="w-full p-2 mb-4 border rounded" placeholder="Password" value="srcasadmin123">
+      <button onclick="adminLogin()" class="w-full bg-emerald-600 text-white p-2 rounded font-semibold">
+        Login as Admin
+      </button>
+    </div>
+
+    <!-- Admin Dashboard (Hidden Initially) -->
+    <div id="adminDashboard" class="hidden bg-white p-6 rounded-xl shadow-lg border mt-6">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-xl font-bold text-gray-800">Exam Control Panel</h3>
+        <button onclick="adminLogout()" class="text-sm text-red-600 hover:text-red-800">
+          <i data-lucide="log-out" class="inline w-4 h-4 mr-1"></i> Logout
+        </button>
+      </div>
+
+      <!-- Timer Control Section -->
+      <div class="mb-8 p-4 bg-gray-50 rounded-lg">
+        <h4 class="font-bold text-lg text-gray-700 mb-3 flex items-center gap-2">
+          <i data-lucide="clock"></i> Global Timer Control
+        </h4>
+        
+        <!-- Timer Status -->
+        <div id="timerStatus" class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="font-semibold text-blue-700">Status:</span>
+              <span id="currentTimerStatus" class="ml-2 px-2 py-1 rounded text-sm font-medium bg-gray-100">Not Active</span>
+            </div>
+            <div id="activeTimerInfo" class="hidden">
+              <span class="font-semibold text-blue-700">Remaining:</span>
+              <span id="activeTimerRemaining" class="ml-2 font-mono text-lg font-bold">00:00</span>
             </div>
           </div>
+        </div>
 
-          <!-- Actions -->
-          <div class="flex gap-4">
-            <button onclick="adminStartExam()"
-              class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-lg font-bold text-lg shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2">
-              <i data-lucide="play"></i> Start Exam for All
-            </button>
-            <button onclick="adminStopExam()"
-              class="flex-1 bg-red-600 hover:bg-red-700 text-white p-4 rounded-lg font-bold text-lg shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2">
-              <i data-lucide="square"></i> Stop Exam
+        <!-- Timer Controls -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Set Duration (Minutes)</label>
+            <input id="timerMinutes" type="number" min="1" max="60" value="10" class="w-full p-2 border rounded">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Set Duration (Seconds)</label>
+            <input id="timerSeconds" type="number" min="0" max="59" value="0" class="w-full p-2 border rounded">
+          </div>
+          <div class="flex items-end">
+            <button onclick="startGlobalTimer()" class="w-full bg-emerald-600 text-white p-2 rounded font-semibold">
+              Start Timer
             </button>
           </div>
         </div>
 
-        <div id="adminStatus" class="mt-6 text-center font-mono text-emerald-800 font-bold bg-gray-100 p-2 rounded">
-          System Ready...
-        </div>
-
-        <button onclick="exitToHome()"
-          class="mt-8 text-sm text-gray-500 hover:text-red-500 underline w-full text-center">
-          Logout Admin
-        </button>
-      </div>
-    </div>
-  </section>
-
-  <!-- HOME -->
-  <section id="home" class="py-20 text-center">
-    <h1 class="text-4xl font-extrabold brand text-emerald-600">
-      Smarter Exams
-    </h1>
-    <p class="mt-3 text-xl font-semibold">Built for SRCAS Students</p>
-    <p class="mt-6 max-w-xl mx-auto text-gray-600">
-      Xamplore is a secure online examination platform designed to
-      reduce malpractice and ensure fair evaluation.
-    </p>
-    <!-- FEATURES, WHY (Omitted for brevity, kept structure) -->
-  </section>
-
-  <!-- TEST -->
-  <section id="test" class="hidden py-16">
-    <div class="max-w-xl mx-auto bg-white p-6 rounded-xl shadow-xl">
-
-      <!-- Loading State -->
-      <div id="loader" class="hidden text-center py-10">
-        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mx-auto"></div>
-        <p class="mt-3 text-emerald-600 font-semibold">Connecting to Server...</p>
-      </div>
-
-      <div id="login">
-        <div class="flex justify-between items-center mb-6">
-          <h2 class="text-2xl font-bold text-emerald-600">Exam Login</h2>
-          <button onclick="toggleAdminLogin()" class="text-xs text-emerald-600 underline">Admin?</button>
-        </div>
-
-        <!-- Student Form -->
-        <div id="studentForm">
-          <input id="nameInput" class="w-full p-2 mb-3 border rounded" placeholder="Your Name">
-          <select id="patternSelect" class="w-full p-2 mb-3 border rounded">
-            <option value="">Select Pattern</option>
-            <option value="A">Pattern A</option>
-            <option value="B">Pattern B</option>
-            <option value="C">Pattern C</option>
-          </select>
-          <input id="passwordInput" type="password" class="w-full p-2 mb-4 border rounded"
-            placeholder="Pattern Password">
-          <button onclick="verifyLogin(false)" class="w-full bg-emerald-600 text-white p-2 rounded font-semibold">
-            Student Login
+        <div class="flex gap-2">
+          <button onclick="pauseGlobalTimer()" class="flex-1 bg-yellow-500 text-white p-2 rounded">
+            <i data-lucide="pause" class="inline w-4 h-4 mr-1"></i> Pause
+          </button>
+          <button onclick="resumeGlobalTimer()" class="flex-1 bg-blue-500 text-white p-2 rounded">
+            <i data-lucide="play" class="inline w-4 h-4 mr-1"></i> Resume
+          </button>
+          <button onclick="stopGlobalTimer()" class="flex-1 bg-red-600 text-white p-2 rounded">
+            <i data-lucide="square" class="inline w-4 h-4 mr-1"></i> Stop
           </button>
         </div>
 
-        <!-- Admin Form -->
-        <div id="adminForm" class="hidden">
-          <input id="adminName" class="w-full p-2 mb-3 border rounded" placeholder="Admin Name">
-          <input id="adminPass" type="password" class="w-full p-2 mb-4 border rounded" placeholder="Admin Password">
-          <button onclick="verifyLogin(true)" class="w-full bg-gray-800 text-white p-2 rounded font-semibold">
-            Admin Login
-          </button>
+        <!-- Timer History -->
+        <div class="mt-6">
+          <h5 class="font-bold text-gray-700 mb-2 flex items-center gap-2">
+            <i data-lucide="history"></i> Timer History
+          </h5>
+          <div id="timerHistory" class="text-sm text-gray-600">
+            <p class="text-gray-400 italic">No timer history yet</p>
+          </div>
         </div>
       </div>
 
-      <div id="rules" class="hidden">
-        <h2 class="text-xl font-bold text-emerald-600 mb-3">Rules & Regulations</h2>
-        <ul class="list-disc pl-5 text-sm space-y-2">
-          <li>No tab switching</li>
-          <li>No exiting fullscreen</li>
-          <li>No screenshots or copy</li>
-          <li>Violations end the test</li>
-        </ul>
-        <button onclick="startExam()" class="mt-4 w-full bg-emerald-600 text-white p-2 rounded">
-          I Agree & Start Exam
-        </button>
-      </div>
-
-      <div id="exam" class="hidden">
-        <div id="questionBox"></div>
-        <button onclick="nextQuestion()" class="mt-4 w-full bg-emerald-600 text-white p-2 rounded">
-          Next
-        </button>
-      </div>
-
-      <div id="failed" class="hidden text-center">
-        <h2 class="text-xl font-bold text-red-600">Test Failed</h2>
-        <p class="text-sm text-gray-600 mb-2">Malpractice detected or window focus lost.</p>
-        <div class="relative">
-          <input id="secondPass" type="password" autocomplete="new-password" class="w-full p-2 mt-3 border rounded"
-            placeholder="Second Chance Code" />
+      <!-- Exam Statistics -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-emerald-600">Total Students</p>
+              <p id="totalStudents" class="text-2xl font-bold text-emerald-700">0</p>
+            </div>
+            <i data-lucide="users" class="text-emerald-500"></i>
+          </div>
         </div>
-        <button onclick="secondChance()" class="mt-3 w-full bg-emerald-600 text-white p-2 rounded">
-          Retry Exam
-        </button>
-        <div id="retryMsg" class="text-red-500 text-xs mt-2"></div>
+        <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-blue-600">Active Exams</p>
+              <p id="activeExams" class="text-2xl font-bold text-blue-700">0</p>
+            </div>
+            <i data-lucide="activity" class="text-blue-500"></i>
+          </div>
+        </div>
+        <div class="p-4 bg-purple-50 rounded-lg border border-purple-200">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-purple-600">Completed</p>
+              <p id="completedExams" class="text-2xl font-bold text-purple-700">0</p>
+            </div>
+            <i data-lucide="check-circle" class="text-purple-500"></i>
+          </div>
+        </div>
       </div>
 
-      <div id="result" class="hidden text-center">
-        <h2 class="text-2xl font-bold text-emerald-600">Test Completed</h2>
-        <p id="resultText" class="mt-3"></p>
-        <button onclick="downloadPDF()" class="mt-4 bg-emerald-600 text-white p-2 rounded">
-          Download PDF
-        </button>
-        <button onclick="exitToHome()" class="mt-4 ml-2 bg-gray-600 hover:bg-gray-700 text-white p-2 rounded">
-          Take Another Test
-        </button>
+      <!-- Student List -->
+      <div>
+        <h4 class="font-bold text-lg text-gray-700 mb-3">Active Students</h4>
+        <div id="studentList" class="border rounded-lg overflow-hidden">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="p-3 text-left">Name</th>
+                <th class="p-3 text-left">Pattern</th>
+                <th class="p-3 text-left">Status</th>
+                <th class="p-3 text-left">Progress</th>
+                <th class="p-3 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="studentTableBody" class="divide-y">
+              <!-- Will be populated by JavaScript -->
+            </tbody>
+          </table>
+        </div>
       </div>
-
     </div>
-  </section>
+  </div>
+</section>
 
-
-
-  <!-- ABOUT -->
-  <section id="about" class="hidden py-20">
+<!-- ABOUT -->
+<section id="about" class="hidden py-20">
     <div class="text-center text-gray-600">
-      <h2 class="text-3xl font-bold text-emerald-600">About</h2>
-      <p class="mt-4">Xamplore Backend Version.</p>
+        <h2 class="text-3xl font-bold text-emerald-600">About</h2>
+        <p class="mt-4">Xamplore Backend Version with Admin Controls.</p>
     </div>
-  </section>
+</section>
 
-  <script>
-    lucide.createIcons();
+<script>
+lucide.createIcons();
 
-    // Elements
-    const el = id => document.getElementById(id);
+// Elements
+const el = id => document.getElementById(id);
 
-    // State - Moved to top to avoid issues
-    let questions = [];
-    let currentIndex = 0;
-    let userAnswers = [];
-    let finalResults = null;
-    let studentName = "";
-    let studentPattern = "";
+// State
+let questions = []; 
+let currentIndex = 0;
+let userAnswers = []; // Array of strings (options)
+let finalResults = null; // For PDF
+let studentName = "";
+let studentPattern = "";
+let adminAuthenticated = false;
+let adminPollingInterval = null;
+let timerPollingInterval = null;
 
-    // Timer & Admin State
-    let isAdmin = false;
-    let examEndTime = null;
-    let timerInterval = null;
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => el('welcomePopup').classList.remove('hidden'), 500);
+  checkAuth();
+});
+function closeWelcomePopup() { el('welcomePopup').classList.add('hidden'); }
 
-    // Socket
-    const socket = io();
+// Nav
+function toggleMenu(){ el('mobileMenu').classList.toggle("hidden"); }
+function showSection(id){
+  ["home","test","hangman","admin","about"].forEach(s => el(s).classList.add("hidden"));
+  el(id).classList.remove("hidden");
+  el('mobileMenu').classList.add("hidden");
+  if(id === 'hangman') initializeHangman();
+  if(id === 'admin' && adminAuthenticated) loadAdminDashboard();
+}
 
-    // Socket Listeners
-    socket.on('connect', () => console.log("Connected to Socket"));
+// --- ADMIN FUNCTIONS ---
 
-    socket.on('exam-state', (state) => {
-      handleExamState(state);
+async function adminLogin() {
+  const name = el('adminName').value.trim();
+  const password = el('adminPassword').value;
+
+  if (name !== "Ellen@SRCAS" || password !== "srcasadmin123") {
+    alert("Invalid admin credentials");
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, password })
     });
-
-    socket.on('exam-started', (state) => {
-      handleExamState(state);
-      if (!isAdmin && el('exam').classList.contains('hidden') === false) {
-        // If student is in exam, ensure they see timer
-      }
-    });
-
-    socket.on('exam-stopped', () => {
-      clearInterval(timerInterval);
-      el('timerDisplay').classList.add('hidden');
-      examEndTime = null;
-      // Optional: Auto submit if stopped? 
-      // For now just stop timer.
-    });
-
-    function handleExamState(state) {
-      if (state.isRunning) {
-        examEndTime = state.endTime;
-        startTimerTicker();
-      } else {
-        examEndTime = null;
-        clearInterval(timerInterval);
-        el('timerDisplay').classList.add('hidden');
-      }
+    
+    const data = await res.json();
+    if (res.ok) {
+      adminAuthenticated = true;
+      el('adminLogin').classList.add('hidden');
+      el('adminDashboard').classList.remove('hidden');
+      loadAdminDashboard();
+      startAdminPolling();
+    } else {
+      alert(data.error || "Admin login failed");
     }
+  } catch (e) {
+    alert("Server error during admin login");
+  }
+}
 
-    function startTimerTicker() {
-      el('timerDisplay').classList.remove('hidden');
-      clearInterval(timerInterval);
+function adminLogout() {
+  adminAuthenticated = false;
+  el('adminLogin').classList.remove('hidden');
+  el('adminDashboard').classList.add('hidden');
+  if (adminPollingInterval) {
+    clearInterval(adminPollingInterval);
+    adminPollingInterval = null;
+  }
+  if (timerPollingInterval) {
+    clearInterval(timerPollingInterval);
+    timerPollingInterval = null;
+  }
+}
 
-      timerInterval = setInterval(() => {
-        const now = Date.now();
-        const diff = examEndTime - now;
+async function loadAdminDashboard() {
+  if (!adminAuthenticated) return;
+  
+  try {
+    // Load dashboard data
+    const [statsRes, timerRes, studentsRes] = await Promise.all([
+      fetch('/api/admin/stats'),
+      fetch('/api/admin/timer'),
+      fetch('/api/admin/students')
+    ]);
+    
+    const stats = await statsRes.json();
+    const timer = await timerRes.json();
+    const students = await studentsRes.json();
+    
+    // Update statistics
+    el('totalStudents').textContent = stats.totalStudents || 0;
+    el('activeExams').textContent = stats.activeExams || 0;
+    el('completedExams').textContent = stats.completedExams || 0;
+    
+    // Update timer status
+    updateTimerDisplay(timer);
+    
+    // Update student list
+    updateStudentList(students);
+    
+  } catch (e) {
+    console.error("Error loading admin dashboard:", e);
+  }
+}
 
-        if (diff <= 0) {
-          clearInterval(timerInterval);
-          el('timeRemaining').textContent = "00:00";
-          // Time is up!
-          // If student is on last question, ENABLE submission or Auto Submit
-          checkSubmitRestriction();
-        } else {
-          const m = Math.floor(diff / 60000);
-          const s = Math.floor((diff % 60000) / 1000);
-          el('timeRemaining').textContent = `${m}:${s < 10 ? '0' : ''}${s}`;
+function updateTimerDisplay(timer) {
+  const statusEl = el('currentTimerStatus');
+  const activeInfoEl = el('activeTimerInfo');
+  const remainingEl = el('activeTimerRemaining');
+  
+  if (timer.active) {
+    statusEl.textContent = timer.paused ? 'Paused' : 'Running';
+    statusEl.className = 'ml-2 px-2 py-1 rounded text-sm font-medium ' + 
+      (timer.paused ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800');
+    
+    activeInfoEl.classList.remove('hidden');
+    
+    // Calculate remaining time
+    const remainingMs = timer.endTime - Date.now();
+    if (remainingMs > 0) {
+      const minutes = Math.floor(remainingMs / 60000);
+      const seconds = Math.floor((remainingMs % 60000) / 1000);
+      remainingEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    } else {
+      remainingEl.textContent = '00:00';
+    }
+  } else {
+    statusEl.textContent = 'Not Active';
+    statusEl.className = 'ml-2 px-2 py-1 rounded text-sm font-medium bg-gray-100 text-gray-800';
+    activeInfoEl.classList.add('hidden');
+    remainingEl.textContent = '00:00';
+  }
+}
+
+function updateStudentList(students) {
+  const tbody = el('studentTableBody');
+  if (!students || students.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">No active students</td></tr>';
+    return;
+  }
+  
+  tbody.innerHTML = students.map(student => `
+    <tr class="hover:bg-gray-50">
+      <td class="p-3">${student.name}</td>
+      <td class="p-3">Pattern ${student.pattern}</td>
+      <td class="p-3">
+        <span class="px-2 py-1 rounded text-xs font-medium ${
+          student.status === 'started' ? 'bg-blue-100 text-blue-800' :
+          student.status === 'completed' ? 'bg-green-100 text-green-800' :
+          student.status === 'failed' ? 'bg-red-100 text-red-800' :
+          'bg-gray-100 text-gray-800'
+        }">
+          ${student.status}
+        </span>
+      </td>
+      <td class="p-3">
+        <div class="w-full bg-gray-200 rounded-full h-2">
+          <div class="bg-emerald-600 h-2 rounded-full" style="width: ${student.progress || 0}%"></div>
+        </div>
+        <div class="text-xs text-gray-500 mt-1">${student.currentQuestion || 0}/${student.totalQuestions || 0}</div>
+      </td>
+      <td class="p-3">
+        ${student.status === 'started' ? 
+          `<button onclick="adminEndExam('${student.name}')" class="text-xs text-red-600 hover:text-red-800">
+            <i data-lucide="x-circle" class="inline w-3 h-3 mr-1"></i> End
+          </button>` : 
+          `<span class="text-xs text-gray-400">-</span>`
         }
-      }, 1000);
-    }
+      </td>
+    </tr>
+  `).join('');
+  
+  lucide.createIcons();
+}
 
-    // Admin Functions
-    function adminStartExam() {
-      const mins = parseInt(el('examDuration').value) || 30;
-      socket.emit('admin-start-exam', mins);
-      el('adminStatus').textContent = "Exam Started!";
-    }
-
-    function adminStopExam() {
-      socket.emit('admin-stop-exam');
-      el('adminStatus').textContent = "Exam Stopped.";
-    }
-
-    function checkSubmitRestriction() {
-      // If we are at the last question
-      if (currentIndex >= questions.length - 1) {
-        const btn = document.querySelector("#exam button"); // Next/Submit button
-        if (btn) {
-          const timeRemaining = examEndTime && (examEndTime - Date.now() > 0);
-          if (timeRemaining) {
-            btn.disabled = true;
-            btn.textContent = "Wait for Timer...";
-            btn.classList.add("opacity-50", "cursor-not-allowed");
-          } else {
-            btn.disabled = false;
-            btn.textContent = "Finish Exam";
-            btn.classList.remove("opacity-50", "cursor-not-allowed");
-          }
-        }
-      }
-    }
-
-    // Init
-    document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(() => el('welcomePopup').classList.remove('hidden'), 500);
-      checkAuth();
+async function startGlobalTimer() {
+  const minutes = parseInt(el('timerMinutes').value) || 0;
+  const seconds = parseInt(el('timerSeconds').value) || 0;
+  const totalSeconds = minutes * 60 + seconds;
+  
+  if (totalSeconds <= 0) {
+    alert("Please set a valid timer duration");
+    return;
+  }
+  
+  try {
+    const res = await fetch('/api/admin/timer/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ duration: totalSeconds })
     });
-    function closeWelcomePopup() { el('welcomePopup').classList.add('hidden'); }
-
-    // Nav
-    function toggleMenu() { el('mobileMenu').classList.toggle("hidden"); }
-    function showSection(id) {
-      ["home", "test", "hangman", "about"].forEach(s => el(s).classList.add("hidden"));
-      el(id).classList.remove("hidden");
-      el('mobileMenu').classList.add("hidden");
-      if (id === 'hangman') initializeHangman();
+    
+    const data = await res.json();
+    if (res.ok) {
+      alert("Global timer started for all students!");
+      loadAdminDashboard();
+    } else {
+      alert(data.error || "Failed to start timer");
     }
+  } catch (e) {
+    alert("Error starting timer");
+  }
+}
 
-    // --- BACKEND API INTERACTION ---
+async function pauseGlobalTimer() {
+  try {
+    const res = await fetch('/api/admin/timer/pause', { method: 'POST' });
+    const data = await res.json();
+    if (res.ok) {
+      loadAdminDashboard();
+    } else {
+      alert(data.error || "Failed to pause timer");
+    }
+  } catch (e) {
+    alert("Error pausing timer");
+  }
+}
 
-    async function checkAuth() {
-      try {
+async function resumeGlobalTimer() {
+  try {
+    const res = await fetch('/api/admin/timer/resume', { method: 'POST' });
+    const data = await res.json();
+    if (res.ok) {
+      loadAdminDashboard();
+    } else {
+      alert(data.error || "Failed to resume timer");
+    }
+  } catch (e) {
+    alert("Error resuming timer");
+  }
+}
+
+async function stopGlobalTimer() {
+  try {
+    const res = await fetch('/api/admin/timer/stop', { method: 'POST' });
+    const data = await res.json();
+    if (res.ok) {
+      alert("Global timer stopped!");
+      loadAdminDashboard();
+    } else {
+      alert(data.error || "Failed to stop timer");
+    }
+  } catch (e) {
+    alert("Error stopping timer");
+  }
+}
+
+async function adminEndExam(studentName) {
+  if (!confirm(`Are you sure you want to end the exam for ${studentName}?`)) return;
+  
+  try {
+    const res = await fetch('/api/admin/end-exam', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentName })
+    });
+    
+    const data = await res.json();
+    if (res.ok) {
+      alert(`Exam ended for ${studentName}`);
+      loadAdminDashboard();
+    } else {
+      alert(data.error || "Failed to end exam");
+    }
+  } catch (e) {
+    alert("Error ending exam");
+  }
+}
+
+function startAdminPolling() {
+  if (adminPollingInterval) clearInterval(adminPollingInterval);
+  adminPollingInterval = setInterval(loadAdminDashboard, 5000); // Update every 5 seconds
+  
+  if (timerPollingInterval) clearInterval(timerPollingInterval);
+  timerPollingInterval = setInterval(checkGlobalTimer, 1000); // Check timer every second
+}
+
+// --- BACKEND API INTERACTION ---
+
+async function checkAuth() {
+    try {
         const res = await fetch('/api/me');
         const data = await res.json();
-
+        
         if (data.loggedIn) {
-          studentName = data.name;
-          studentPattern = data.pattern;
-
-          if (data.status === 'completed') {
-            showResultScreen(data.score, data.totalQuestions, true);
-          } else if (data.status === 'started') {
-            // Resume not fully implemented in this simple version without fetching state, 
-            // but we can just show rules or start.
-            // Ideally, we'd fetch the current question index.
-            // For now, reset to rules.
-            el('login').classList.add('hidden');
-            el('rules').classList.remove('hidden');
-          } else if (data.status === 'failed') {
-            failTestUI();
-          }
+            studentName = data.name;
+            studentPattern = data.pattern;
+            
+            if (data.status === 'completed') {
+                showResultScreen(data.score, data.totalQuestions, true);
+            } else if (data.status === 'started') {
+                 el('login').classList.add('hidden');
+                 el('rules').classList.remove('hidden');
+            } else if (data.status === 'failed') {
+                 failTestUI();
+            }
         }
-      } catch (e) { console.error("Auth check failed", e); }
-    }
+    } catch (e) { console.error("Auth check failed", e); }
+}
 
-    function toggleAdminLogin() {
-      const studentForm = el('studentForm');
-      const adminForm = el('adminForm');
-      const btn = document.querySelector("#login button.text-xs");
+async function verifyLogin() {
+    const name = el('nameInput').value.trim();
+    const pattern = el('patternSelect').value;
+    const password = el('passwordInput').value;
 
-      if (adminForm.classList.contains('hidden')) {
-        // Show Admin
-        studentForm.classList.add('hidden');
-        adminForm.classList.remove('hidden');
-        btn.textContent = "Student?";
-      } else {
-        // Show Student
-        studentForm.classList.remove('hidden');
-        adminForm.classList.add('hidden');
-        btn.textContent = "Admin?";
-      }
-    }
+    if (!name || !pattern || !password) return alert("Fill all details");
+    
+    el('loader').classList.remove('hidden');
+    el('login').classList.add('hidden');
 
-    async function verifyLogin(isAdminLogin) {
-      let payload = {};
-
-      if (isAdminLogin) {
-        const name = el('adminName').value.trim();
-        const password = el('adminPass').value;
-        if (!name || !password) return alert("Fill all admin details");
-        payload = { name, password }; // No pattern for admin
-      } else {
-        const name = el('nameInput').value.trim();
-        const pattern = el('patternSelect').value;
-        const password = el('passwordInput').value;
-        if (!name || !pattern || !password) return alert("Fill all student details");
-        payload = { name, pattern, password };
-      }
-
-      el('loader').classList.remove('hidden');
-      el('login').classList.add('hidden');
-
-      try {
+    try {
         const res = await fetch('/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, pattern, password })
         });
-
+        
         const data = await res.json();
         el('loader').classList.add('hidden');
 
         if (res.ok) {
-          if (data.role === 'admin') {
-            isAdmin = true;
-            studentName = "Admin";
-            el('adminPanel').classList.remove('hidden');
-            // Hide other sections if needed or just stay on test page
-          } else {
-            studentName = payload.name; // Use payload name
-            studentPattern = payload.pattern;
+            studentName = name;
+            studentPattern = pattern;
             el('rules').classList.remove('hidden');
-          }
         } else {
-          alert(data.error || "Login Failed");
-          el('login').classList.remove('hidden');
+            alert(data.error || "Login Failed");
+            el('login').classList.remove('hidden');
         }
-      } catch (e) {
+    } catch (e) {
         el('loader').classList.add('hidden');
         el('login').classList.remove('hidden');
-        alert("Server Error: " + e.message);
-      }
+        alert("Server Error");
     }
+}
 
-    async function startExam() {
-      try {
+async function checkGlobalTimer() {
+  // This function checks if a global timer is active and updates UI
+  try {
+    const res = await fetch('/api/timer/status');
+    const data = await res.json();
+    
+    if (data.active) {
+      // Show timer on exam page if we're in exam
+      if (el('exam') && !el('exam').classList.contains('hidden')) {
+        el('globalTimerDisplay').classList.remove('hidden');
+        
+        // Update timer display
+        const remainingMs = data.endTime - Date.now();
+        if (remainingMs > 0) {
+          const minutes = Math.floor(remainingMs / 60000);
+          const seconds = Math.floor((remainingMs % 60000) / 1000);
+          el('globalTimer').textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+          
+          // Add/remove pulse animation based on status
+          if (data.paused) {
+            el('globalTimerDisplay').classList.remove('timer-running');
+          } else {
+            el('globalTimerDisplay').classList.add('timer-running');
+          }
+        } else {
+          el('globalTimer').textContent = "00:00";
+          el('globalTimerDisplay').classList.remove('timer-running');
+        }
+      }
+    } else {
+      el('globalTimerDisplay').classList.add('hidden');
+    }
+  } catch (e) {
+    // Silent fail for timer check
+  }
+}
+
+async function startExam() {
+    try {
         const res = await fetch('/api/start-v2', { method: 'POST' });
         const data = await res.json();
-
+        
         if (res.ok) {
-          questions = data.questions;
-          currentIndex = 0;
-          userAnswers = [];
-
-          el('rules').classList.add('hidden');
-          el('exam').classList.remove('hidden');
-
-          try { document.documentElement.requestFullscreen(); } catch (e) { }
-
-          renderQuestion();
-          startMonitoring();
+            questions = data.questions;
+            currentIndex = 0;
+            userAnswers = [];
+            
+            el('rules').classList.add('hidden');
+            el('exam').classList.remove('hidden');
+            
+            try { document.documentElement.requestFullscreen(); } catch(e){}
+            
+            renderQuestion();
+            startMonitoring();
+            checkGlobalTimer(); // Initial check
         } else {
-          alert(data.error);
-          if (data.error.includes("completed")) showSection('home');
-          if (data.error.includes("failed")) failTestUI();
+            alert(data.error);
+            if (data.error.includes("completed")) showSection('home');
+            if (data.error.includes("failed")) failTestUI();
         }
-      } catch (e) { alert("Could not start exam"); }
-    }
+    } catch (e) { alert("Could not start exam"); }
+}
 
-    function renderQuestion() {
-      const q = questions[currentIndex];
-      el('questionBox').innerHTML = `
-        <p class="font-semibold mb-3">Q${currentIndex + 1}: ${q.q}</p>
+function renderQuestion() {
+    const q = questions[currentIndex];
+    const isLastQuestion = currentIndex >= questions.length - 1;
+    
+    el('questionBox').innerHTML = `
+        <p class="font-semibold mb-3">Q${currentIndex+1}: ${q.q}</p>
         ${q.options.map(o => `
             <label class="block mb-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
                 <input type="radio" name="ans" value="${o}" class="mr-2"> ${o}
             </label>
         `).join("")}
     `;
-
-      // Button Text Logic
-      const btn = document.querySelector("#exam button");
-      if (currentIndex === questions.length - 1) {
-        btn.textContent = "Finish Exam";
-        checkSubmitRestriction();
-      } else {
-        btn.textContent = "Next";
-        btn.disabled = false;
-        btn.classList.remove("opacity-50", "cursor-not-allowed");
-      }
+    
+    // Update next button text
+    const nextButton = el('nextButton');
+    if (isLastQuestion) {
+        nextButton.textContent = 'Submit Exam';
+        nextButton.classList.remove('bg-emerald-600');
+        nextButton.classList.add('bg-purple-600');
+    } else {
+        nextButton.textContent = 'Next';
+        nextButton.classList.remove('bg-purple-600');
+        nextButton.classList.add('bg-emerald-600');
     }
+}
 
-    function nextQuestion() {
-      const sel = document.querySelector("input[name='ans']:checked");
-      if (!sel) return alert("Please select an option");
-
-      userAnswers.push(sel.value);
-      currentIndex++;
-
-      if (currentIndex >= questions.length) {
-        // Should not happen if button disabled, but double check
-        const timeRemaining = examEndTime && (examEndTime - Date.now() > 0);
-        if (timeRemaining) {
-          currentIndex--; // revert
-          userAnswers.pop();
-          return alert("You must wait for the timer to run out before submitting!");
+async function nextQuestion() {
+    const sel = document.querySelector("input[name='ans']:checked");
+    if (!sel) return alert("Please select an option");
+    
+    userAnswers.push(sel.value);
+    currentIndex++;
+    
+    // Check if this is the last question and if global timer is active
+    const isLastQuestion = currentIndex >= questions.length - 1;
+    
+    if (isLastQuestion) {
+        // Check if global timer is active
+        try {
+            const timerRes = await fetch('/api/timer/status');
+            const timerData = await timerRes.json();
+            
+            if (timerData.active && !timerData.paused && timerData.endTime > Date.now()) {
+                // Timer is active, lock the final question
+                alert("Global timer is active. Please wait until the timer ends to submit your exam.");
+                currentIndex--; // Go back to last question
+                userAnswers.pop(); // Remove the last answer
+                renderQuestion();
+                return;
+            }
+        } catch (e) {
+            console.error("Error checking timer status:", e);
         }
-        submitExam();
-      } else {
-        renderQuestion();
-      }
     }
+    
+    if (currentIndex >= questions.length) {
+        submitExam();
+    } else {
+        renderQuestion();
+    }
+}
 
-    async function submitExam() {
-      el('loader').classList.remove('hidden');
-      el('exam').classList.add('hidden');
-
-      try {
+async function submitExam() {
+    el('loader').classList.remove('hidden');
+    el('exam').classList.add('hidden');
+    
+    try {
         const res = await fetch('/api/submit-v2', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ answers: userAnswers })
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ answers: userAnswers })
         });
-
+        
         const data = await res.json();
         el('loader').classList.add('hidden');
-
+        
         if (res.ok) {
-          finalResults = data.results; // For PDF
-          showResultScreen(data.score, data.total);
-          stopMonitoring();
+            finalResults = data.results; // For PDF
+            showResultScreen(data.score, data.total);
+            stopMonitoring();
         } else {
-          alert("Submission failed: " + data.error);
+            alert("Submission failed: " + data.error);
         }
-      } catch (e) { alert("Error submitting"); }
-    }
+    } catch (e) { alert("Error submitting"); }
+}
 
-    function showResultScreen(score, total, minimal = false) {
-      el('login').classList.add('hidden');
-      el('rules').classList.add('hidden');
-      el('exam').classList.add('hidden');
-      el('result').classList.remove('hidden');
-
-      try { document.exitFullscreen(); } catch (e) { }
-
-      el('resultText').textContent = `${studentName} — Score ${score}/${total}`;
-
-      if (minimal) {
-        // If reloading page, we might not have `finalResults` for PDF.
-        // Disable PDF or fetch specific PDF data endpoint if needed.
-        // For now, allow download only if just finished.
+function showResultScreen(score, total, minimal = false) {
+    el('login').classList.add('hidden');
+    el('rules').classList.add('hidden');
+    el('exam').classList.add('hidden');
+    el('result').classList.remove('hidden');
+    
+    try { document.exitFullscreen(); } catch(e){}
+    
+    el('resultText').textContent = `${studentName} — Score ${score}/${total}`;
+    
+    if (minimal) {
         if (!finalResults) document.querySelector("#result button").style.display = 'none';
         el('resultText').innerHTML += "<br><span class='text-xs text-gray-500'>(Reloaded - PDF unavailable)</span>";
-      }
     }
+}
 
-    // --- SECURITY & RETRY ---
+// --- SECURITY & RETRY ---
 
-    let monitoringActive = false;
+let monitoringActive = false;
 
-    function startMonitoring() {
-      monitoringActive = true;
-      document.addEventListener("visibilitychange", handleVisibilityChange);
-      window.addEventListener("blur", handleBlur);
-      document.addEventListener("fullscreenchange", handleFullscreen);
-    }
+function startMonitoring() {
+    monitoringActive = true;
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleBlur);
+    document.addEventListener("fullscreenchange", handleFullscreen);
+}
 
-    function stopMonitoring() {
-      monitoringActive = false;
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("blur", handleBlur);
-      document.removeEventListener("fullscreenchange", handleFullscreen);
-    }
+function stopMonitoring() {
+    monitoringActive = false;
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+    window.removeEventListener("blur", handleBlur);
+    document.removeEventListener("fullscreenchange", handleFullscreen);
+}
 
-    function handleVisibilityChange() {
-      if (monitoringActive && document.hidden) triggerFail("Tab switch detected");
-    }
-    function handleBlur() {
-      if (monitoringActive) triggerFail("Window focus lost");
-    }
-    function handleFullscreen() {
-      if (monitoringActive && !document.fullscreenElement) triggerFail("Exited fullscreen");
-    }
+function handleVisibilityChange() {
+    if (monitoringActive && document.hidden) triggerFail("Tab switch detected");
+}
+function handleBlur() {
+    if (monitoringActive) triggerFail("Window focus lost");
+}
+function handleFullscreen() {
+    if (monitoringActive && !document.fullscreenElement) triggerFail("Exited fullscreen");
+}
 
-    function triggerFail(reason) {
-      monitoringActive = false;
-      fetch('/api/fail', { method: 'POST' }); // Tell server
-      failTestUI();
-    }
+function triggerFail(reason) {
+    monitoringActive = false;
+    fetch('/api/fail', { method: 'POST' }); // Tell server
+    failTestUI();
+}
 
-    function failTestUI() {
-      el('exam').classList.add('hidden');
-      el('rules').classList.add('hidden');
-      el('login').classList.add('hidden');
-      el('failed').classList.remove('hidden');
-      try { document.exitFullscreen(); } catch (e) { }
-    }
+function failTestUI() {
+    el('exam').classList.add('hidden');
+    el('rules').classList.add('hidden');
+    el('login').classList.add('hidden');
+    el('failed').classList.remove('hidden');
+    try { document.exitFullscreen(); } catch(e){}
+}
 
-    async function secondChance() {
-      const code = el('secondPass').value;
-
-      try {
+async function secondChance() {
+    const code = el('secondPass').value;
+    
+    try {
         const res = await fetch('/api/retry', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code })
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
         });
-
+        
         if (res.ok) {
-          el('failed').classList.add('hidden');
-          el('rules').classList.remove('hidden');
-          // User must click "Start" again
+            el('failed').classList.add('hidden');
+            el('rules').classList.remove('hidden');
         } else {
-          el('retryMsg').textContent = "Invalid Code";
+            el('retryMsg').textContent = "Invalid Code";
         }
-      } catch (e) {
+    } catch (e) {
         alert("Error connecting");
-      }
     }
+}
 
-    // --- PDF ---
-    function downloadPDF() {
-      if (!finalResults) return alert("Results data not available");
-
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF();
-      let y = 10;
-
-      pdf.setFontSize(14);
-      pdf.text(`Xamplore Report - ${studentName}`, 10, y); y += 10;
-      pdf.setFontSize(12);
-      pdf.text(`Pattern: ${studentPattern}`, 10, y); y += 10;
-
-      finalResults.forEach((r, i) => {
-        if (y > 270) { pdf.addPage(); y = 10; }
-
+// --- PDF ---
+function downloadPDF() {
+    if (!finalResults) return alert("Results data not available");
+    
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+    let y = 10;
+    
+    pdf.setFontSize(14);
+    pdf.text(`Xamplore Report - ${studentName}`, 10, y); y+=10;
+    pdf.setFontSize(12);
+    pdf.text(`Pattern: ${studentPattern}`, 10, y); y+=10;
+    
+    finalResults.forEach((r, i) => {
+        if (y > 270) { pdf.addPage(); y=10; }
+        
         pdf.setFont(undefined, 'bold');
-        pdf.text(`Q${i + 1}: ${r.q}`, 10, y); y += 7;
-
+        pdf.text(`Q${i+1}: ${r.q}`, 10, y); y+=7;
+        
         pdf.setFont(undefined, 'normal');
         pdf.setTextColor(r.isCorrect ? 0 : 200, r.isCorrect ? 100 : 0, 0);
-        pdf.text(`Ans: ${r.userAns} (${r.isCorrect ? 'Correct' : 'Wrong'})`, 15, y);
-
+        pdf.text(`Ans: ${r.userAns} (${r.isCorrect ? 'Correct' : 'Wrong'})`, 15, y); 
+        
         if (!r.isCorrect) {
-          pdf.setTextColor(100);
-          pdf.text(`Correct: ${r.correctAns}`, 80, y);
+            pdf.setTextColor(100);
+            pdf.text(`Correct: ${r.correctAns}`, 80, y);
         }
-        y += 10;
+        y+=10;
         pdf.setTextColor(0);
-      });
+    });
+    
+    pdf.save("Xamplore_Result.pdf");
+}
 
-      pdf.save("Xamplore_Result.pdf");
-    }
-
-    function exitToHome() {
-      fetch('/api/logout', { method: 'POST' })
-        .then(() => window.location.reload())
-        .catch(() => window.location.reload());
-    }
-
-    // --- HANGMAN (Restored Minimal) ---
-    const HANGMAN_WORDS = ["javascript", "python", "react", "node", "vercel"];
-    let hangman = { word: "", guessed: [], lives: 7 };
-    function initializeHangman() {
-      hangman.word = HANGMAN_WORDS[Math.floor(Math.random() * 5)];
-      hangman.guessed = [];
-      hangman.lives = 7;
-      updateHangmanUI();
-    }
-    function updateHangmanUI() {
-      const display = hangman.word.split('').map(l => hangman.guessed.includes(l) ? l : '_').join(' ');
-      el('hangmanWordDisplay').textContent = display;
-
-      const alpha = 'abcdefghijklmnopqrstuvwxyz'.split('');
-      el('letterButtons').innerHTML = alpha.map(l => `
-        <button onclick="guess('${l}')" class="p-2 border rounded ${hangman.guessed.includes(l) ? 'bg-gray-200' : ''}" 
-        ${hangman.guessed.includes(l) ? 'disabled' : ''}>${l}</button>
+// --- HANGMAN ---
+const HANGMAN_WORDS = ["javascript", "python", "react", "node", "vercel"];
+let hangman = { word:"", guessed:[], lives:7 };
+function initializeHangman() {
+    hangman.word = HANGMAN_WORDS[Math.floor(Math.random()*5)];
+    hangman.guessed = [];
+    hangman.lives = 7;
+    updateHangmanUI();
+}
+function updateHangmanUI() {
+    const display = hangman.word.split('').map(l => hangman.guessed.includes(l)?l:'_').join(' ');
+    el('hangmanWordDisplay').textContent = display;
+    
+    const alpha = 'abcdefghijklmnopqrstuvwxyz'.split('');
+    el('letterButtons').innerHTML = alpha.map(l => `
+        <button onclick="guess('${l}')" class="p-2 border rounded ${hangman.guessed.includes(l)?'bg-gray-200':''}" 
+        ${hangman.guessed.includes(l)?'disabled':''}>${l}</button>
     `).join('');
-    }
-    window.guess = function (l) {
-      hangman.guessed.push(l);
-      updateHangmanUI();
-    }
-  </script>
+}
+window.guess = function(l) {
+    hangman.guessed.push(l);
+    updateHangmanUI();
+}
+</script>
 
 </body>
-
 </html>
