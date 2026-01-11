@@ -432,7 +432,7 @@
       } catch (e) {
         el('loader').classList.add('hidden');
         el('login').classList.remove('hidden');
-        alert("Server Error");
+        alert("Server Error: " + e.message);
       }
     }
 
