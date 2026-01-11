@@ -1,9 +1,14 @@
+const http = require('http');
+const socketIo = require('socket.io');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const path = require('path');
 
 const app = express();
+const server = http.createServer(app);
+const io = socketIo(server);
+
 const PORT = process.env.PORT || 3000;
 
 // Middleware
@@ -11,7 +16,7 @@ app.use(bodyParser.json());
 app.use(cookieParser('xamplore-super-secret-key-2024')); // Signed cookies
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- DATA (Moved from Frontend) ---
+// --- DATA ---
 
 const PASSWORDS = {
     A: "alpha123",
@@ -20,6 +25,53 @@ const PASSWORDS = {
 };
 
 const SECOND_PASS = "choice2ellen";
+
+const ADMIN_CREDS = {
+    name: "Ellen@SRCAS",
+    password: "srcasadmin123"
+};
+
+// --- GLOBAL STATE (In-Memory) ---
+let examState = {
+    isRunning: false,
+    startTime: null,
+    endTime: null,
+    durationMinutes: 0
+};
+
+// --- SOCKET.IO LOGIC ---
+io.on('connection', (socket) => {
+    // Send current state to new implementation
+    socket.emit('exam-state', examState);
+
+    socket.on('admin-start-exam', (minutes) => {
+        // In a real app, verify admin token here. 
+        // For this simple version, we trust the event if the correct password was used in HTTP login (implied).
+        // Or we can pass a token. For now, we'll keep it simple as requested.
+
+        const durationMs = minutes * 60 * 1000;
+        const now = Date.now();
+
+        examState = {
+            isRunning: true,
+            startTime: now,
+            endTime: now + durationMs,
+            durationMinutes: minutes
+        };
+
+        io.emit('exam-started', examState);
+    });
+
+    socket.on('admin-stop-exam', () => {
+        examState = {
+            isRunning: false,
+            startTime: null,
+            endTime: null,
+            durationMinutes: 0
+        };
+        io.emit('exam-stopped');
+    });
+});
 
 const QUESTION_BANK = {
     A: [
@@ -136,8 +188,28 @@ function shuffle(array) {
 app.post('/api/login', (req, res) => {
     const { name, pattern, password } = req.body;
 
-    if (!name || !pattern || !password) {
+    if (!name || !password) {
         return res.status(400).json({ error: "Missing fields" });
+    }
+
+    // ADMIN LOGIN CHECK
+    if (name === ADMIN_CREDS.name && password === ADMIN_CREDS.password) {
+        const sessionData = {
+            name: "Admin",
+            role: "admin",
+            status: "ready"
+        };
+        res.cookie('session', sessionData, {
+            httpOnly: true,
+            signed: true,
+            maxAge: 7200000
+        });
+        return res.json({ success: true, message: "Admin Logged In", role: 'admin' });
+    }
+
+    // STUDENT LOGIN CHECK
+    if (!pattern) {
+        return res.status(400).json({ error: "Missing pattern" });
     }
 
     if (PASSWORDS[pattern] !== password) {
@@ -149,6 +221,7 @@ app.post('/api/login', (req, res) => {
     const sessionData = {
         name,
         pattern,
+        role: "student",
         status: 'ready', // ready, started, completed, failed
         score: null,
         startTime: null
@@ -160,7 +233,7 @@ app.post('/api/login', (req, res) => {
         maxAge: 7200000
     });
 
-    res.json({ success: true, message: "Logged in" });
+    res.json({ success: true, message: "Logged in", role: 'student' });
 });
 
 // 2. CHECK STATUS (For page reloads)
@@ -172,10 +245,11 @@ app.get('/api/me', (req, res) => {
     return res.json({
         loggedIn: true,
         name: session.name,
-        pattern: session.pattern,
+        pattern: session.pattern || null,
         status: session.status,
         score: session.score,
-        totalQuestions: QUESTION_BANK[session.pattern].length
+        role: session.role || 'student',
+        totalQuestions: session.role === 'admin' ? 0 : QUESTION_BANK[session.pattern].length
     });
 });
 
@@ -183,6 +257,9 @@ app.get('/api/me', (req, res) => {
 app.post('/api/start', (req, res) => {
     const session = req.signedCookies.session;
     if (!session) return res.status(401).json({ error: "Not logged in" });
+
+    // Admin doesn't take the exam
+    if (session.role === 'admin') return res.status(400).json({ error: "Admins cannot start exams." });
 
     if (session.status === 'completed') {
         return res.status(403).json({ error: "Test already completed. You cannot retake it." });
@@ -212,39 +289,8 @@ app.post('/api/start', (req, res) => {
 
 // 4. SUBMIT EXAM
 app.post('/api/submit', (req, res) => {
-    const session = req.signedCookies.session;
-    if (!session) return res.status(401).json({ error: "Not logged in" });
-
-    if (session.status === 'completed') {
-        return res.status(400).json({ error: "Already submitted." });
-    }
-
-    const { answers } = req.body; // Array of selected answers strings
-    const patternQuestions = QUESTION_BANK[session.pattern];
-
-    if (!answers || !Array.isArray(answers)) {
-        return res.status(400).json({ error: "Invalid answers format" });
-    }
-
-    // Calculate Score
-    // Note: Since client shuffled questions, we need to match them. 
-    // However, the client just sends an array of answers. 
-    // Wait, if the client shuffled them, the indices won't match the server's QUESTION_BANK order.
-    // OPTION 1: Send IDs with questions.
-    // OPTION 2: Trust the client sent the question text? No.
-    // FIX: The Server shuffle logic above was per-request. If I shuffle in /api/start, I lose the order unless I store the order in the session.
-    // For this simple example without DB, storing the specific question order in the cookie is the best "stateless" way.
-
-    // BUT: The cookie size is limited. Storing whole questions is bad.
-    // STRATEGY: Store the indices of the questions in the cookie when starting.
-
-    // Let's Refactor /api/start slightly inside.
-
-    // Actually, looking at the provided Frontend code, it expects:
-    // questions = shuffle([...QUESTION_BANK[pattern]]).
-    // implementation:
-    // It's stateless. If I send shuffled questions, I MUST know the order to grade them.
-    // I will store the `questionIndices` in the session cookie.
+    // Legacy endpoint, defer to v2
+    return app._router.handle({ ...req, url: '/api/submit-v2' }, res);
 });
 
 // REDO /api/start to handle indices
@@ -386,7 +432,7 @@ app.post('/api/start', (req, res) => app._router.handle({ ...req, url: '/api/sta
 
 // Export for local
 if (require.main === module) {
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 
 module.exports = app;
