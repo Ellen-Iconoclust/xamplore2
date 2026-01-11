@@ -79,7 +79,6 @@
       <div class="hidden md:flex gap-8 font-semibold">
         <button onclick="showSection('home')">Home</button>
         <button onclick="showSection('test')">Test</button>
-        <button onclick="showSection('hangman')">Hangman</button>
         <button onclick="showSection('about')">About</button>
       </div>
 
@@ -91,7 +90,6 @@
     <div id="mobileMenu" class="hidden md:hidden px-6 pb-4 space-y-3 font-semibold">
       <button onclick="showSection('home')" class="block">Home</button>
       <button onclick="showSection('test')" class="block">Test</button>
-      <button onclick="showSection('hangman')" class="block">Hangman</button>
       <button onclick="showSection('about')" class="block">About</button>
     </div>
   </nav>
@@ -102,34 +100,49 @@
     Time Left: <span id="timeRemaining">00:00</span>
   </div>
 
-  <!-- ADMIN PANEL -->
-  <section id="adminPanel" class="hidden py-10 bg-gray-50 border-b">
-    <div class="max-w-4xl mx-auto px-6">
-      <div
-        class="bg-white p-6 rounded-xl shadow border border-emerald-200 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div>
-          <h2 class="text-2xl font-bold text-emerald-800">Admin Control</h2>
-          <p class="text-sm text-gray-500">Manage Global Exam Timer</p>
-        </div>
+  <!-- ADMIN PANEL (Styled) -->
+  <section id="adminPanel" class="hidden min-h-screen bg-gray-50 flex flex-col items-center py-10">
+    <div class="max-w-full w-full px-6">
+      <div class="bg-white rounded-xl shadow-2xl p-8 max-w-2xl mx-auto border-t-4 border-emerald-600">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Admin Dashboard</h1>
+        <p class="text-gray-500 mb-8">Control exam sessions securely.</p>
 
-        <div class="flex items-center gap-4">
-          <div class="flex items-center gap-2">
-            <label class="font-semibold">Duration (mins):</label>
-            <input id="examDuration" type="number" value="30" class="border p-2 rounded w-20 text-center" min="1">
+        <div class="grid grid-cols-1 gap-6">
+          <!-- Timer Control -->
+          <div class="bg-emerald-50 p-6 rounded-lg border border-emerald-100">
+            <h3 class="text-lg font-bold text-emerald-800 mb-3 flex items-center gap-2">
+              <i data-lucide="timer"></i> Global Timer
+            </h3>
+            <div class="flex items-center gap-4">
+              <input id="examDuration" type="number" value="30"
+                class="border-2 border-emerald-200 p-2 rounded w-24 text-center font-bold text-lg" min="1"
+                placeholder="Mins">
+              <span class="font-semibold text-emerald-700">Minutes</span>
+            </div>
           </div>
 
-          <button onclick="adminStartExam()"
-            class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded font-bold shadow transition">
-            START EXAM
-          </button>
-
-          <button onclick="adminStopExam()"
-            class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded font-bold shadow transition">
-            STOP
-          </button>
+          <!-- Actions -->
+          <div class="flex gap-4">
+            <button onclick="adminStartExam()"
+              class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-lg font-bold text-lg shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2">
+              <i data-lucide="play"></i> Start Exam for All
+            </button>
+            <button onclick="adminStopExam()"
+              class="flex-1 bg-red-600 hover:bg-red-700 text-white p-4 rounded-lg font-bold text-lg shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2">
+              <i data-lucide="square"></i> Stop Exam
+            </button>
+          </div>
         </div>
+
+        <div id="adminStatus" class="mt-6 text-center font-mono text-emerald-800 font-bold bg-gray-100 p-2 rounded">
+          System Ready...
+        </div>
+
+        <button onclick="exitToHome()"
+          class="mt-8 text-sm text-gray-500 hover:text-red-500 underline w-full text-center">
+          Logout Admin
+        </button>
       </div>
-      <div id="adminStatus" class="mt-4 text-center font-mono text-emerald-600 font-bold"></div>
     </div>
   </section>
 
@@ -157,18 +170,35 @@
       </div>
 
       <div id="login">
-        <h2 class="text-2xl font-bold mb-4 text-emerald-600">Exam Login</h2>
-        <input id="nameInput" class="w-full p-2 mb-3 border rounded" placeholder="Your Name">
-        <select id="patternSelect" class="w-full p-2 mb-3 border rounded">
-          <option value="">Select Pattern</option>
-          <option value="A">Pattern A</option>
-          <option value="B">Pattern B</option>
-          <option value="C">Pattern C</option>
-        </select>
-        <input id="passwordInput" type="password" class="w-full p-2 mb-4 border rounded" placeholder="Pattern Password">
-        <button onclick="verifyLogin()" class="w-full bg-emerald-600 text-white p-2 rounded font-semibold">
-          Continue
-        </button>
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-emerald-600">Exam Login</h2>
+          <button onclick="toggleAdminLogin()" class="text-xs text-emerald-600 underline">Admin?</button>
+        </div>
+
+        <!-- Student Form -->
+        <div id="studentForm">
+          <input id="nameInput" class="w-full p-2 mb-3 border rounded" placeholder="Your Name">
+          <select id="patternSelect" class="w-full p-2 mb-3 border rounded">
+            <option value="">Select Pattern</option>
+            <option value="A">Pattern A</option>
+            <option value="B">Pattern B</option>
+            <option value="C">Pattern C</option>
+          </select>
+          <input id="passwordInput" type="password" class="w-full p-2 mb-4 border rounded"
+            placeholder="Pattern Password">
+          <button onclick="verifyLogin(false)" class="w-full bg-emerald-600 text-white p-2 rounded font-semibold">
+            Student Login
+          </button>
+        </div>
+
+        <!-- Admin Form -->
+        <div id="adminForm" class="hidden">
+          <input id="adminName" class="w-full p-2 mb-3 border rounded" placeholder="Admin Name">
+          <input id="adminPass" type="password" class="w-full p-2 mb-4 border rounded" placeholder="Admin Password">
+          <button onclick="verifyLogin(true)" class="w-full bg-gray-800 text-white p-2 rounded font-semibold">
+            Admin Login
+          </button>
+        </div>
       </div>
 
       <div id="rules" class="hidden">
@@ -218,24 +248,7 @@
     </div>
   </section>
 
-  <!-- HANGMAN (Keeping logic, it handles itself) -->
-  <section id="hangman" class="hidden py-16">
-    <div class="max-w-4xl mx-auto px-4">
-      <h2 class="text-3xl font-bold text-center text-emerald-600 mb-8">Tech Hangman</h2>
-      <div class="flex justify-center">
-        <p class="text-gray-500">(Game functionality preserved)</p>
-      </div>
-      <!-- Simplified placeholder for brevity as user didn't ask to change this -->
-      <!-- BUT user provided full file, I should try to preserve it if possible or just include necessary parts -->
-      <!-- Re-including simplified hangman UI for completeness -->
-      <div class="bg-white p-6 rounded-xl shadow-lg border mt-4 text-center">
-        <div id="hangmanWordDisplay" class="text-2xl font-mono mb-4"></div>
-        <div id="letterButtons" class="flex flex-wrap gap-2 justify-center"></div>
-        <button onclick="initializeHangman()" class="mt-4 bg-emerald-600 text-white px-4 py-2 rounded">Start
-          Game</button>
-      </div>
-    </div>
-  </section>
+
 
   <!-- ABOUT -->
   <section id="about" class="hidden py-20">
@@ -251,19 +264,21 @@
     // Elements
     const el = id => document.getElementById(id);
 
-    // State
+    // State - Moved to top to avoid issues
     let questions = [];
     let currentIndex = 0;
-    let userAnswers = []; // Array of strings (options)
-    let finalResults = null; // For PDF
+    let userAnswers = [];
+    let finalResults = null;
     let studentName = "";
     let studentPattern = "";
 
-    // NEW: Timer & Admin State
-    const socket = io();
+    // Timer & Admin State
+    let isAdmin = false;
     let examEndTime = null;
     let timerInterval = null;
-    let isAdmin = false;
+
+    // Socket
+    const socket = io();
 
     // Socket Listeners
     socket.on('connect', () => console.log("Connected to Socket"));
@@ -394,12 +409,39 @@
       } catch (e) { console.error("Auth check failed", e); }
     }
 
-    async function verifyLogin() {
-      const name = el('nameInput').value.trim();
-      const pattern = el('patternSelect').value;
-      const password = el('passwordInput').value;
+    function toggleAdminLogin() {
+      const studentForm = el('studentForm');
+      const adminForm = el('adminForm');
+      const btn = document.querySelector("#login button.text-xs");
 
-      if (!name || !pattern || !password) return alert("Fill all details");
+      if (adminForm.classList.contains('hidden')) {
+        // Show Admin
+        studentForm.classList.add('hidden');
+        adminForm.classList.remove('hidden');
+        btn.textContent = "Student?";
+      } else {
+        // Show Student
+        studentForm.classList.remove('hidden');
+        adminForm.classList.add('hidden');
+        btn.textContent = "Admin?";
+      }
+    }
+
+    async function verifyLogin(isAdminLogin) {
+      let payload = {};
+
+      if (isAdminLogin) {
+        const name = el('adminName').value.trim();
+        const password = el('adminPass').value;
+        if (!name || !password) return alert("Fill all admin details");
+        payload = { name, password }; // No pattern for admin
+      } else {
+        const name = el('nameInput').value.trim();
+        const pattern = el('patternSelect').value;
+        const password = el('passwordInput').value;
+        if (!name || !pattern || !password) return alert("Fill all student details");
+        payload = { name, pattern, password };
+      }
 
       el('loader').classList.remove('hidden');
       el('login').classList.add('hidden');
@@ -408,7 +450,7 @@
         const res = await fetch('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, pattern, password })
+          body: JSON.stringify(payload)
         });
 
         const data = await res.json();
@@ -421,8 +463,8 @@
             el('adminPanel').classList.remove('hidden');
             // Hide other sections if needed or just stay on test page
           } else {
-            studentName = name;
-            studentPattern = pattern;
+            studentName = payload.name; // Use payload name
+            studentPattern = payload.pattern;
             el('rules').classList.remove('hidden');
           }
         } else {
