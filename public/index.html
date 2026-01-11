@@ -15,6 +15,9 @@
   <!-- Lucide -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
+  <!-- Socket.io -->
+  <script src="/socket.io/socket.io.js"></script>
+
   <!-- Fonts -->
   <link
     href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Montserrat:wght@700;900&display=swap"
@@ -92,6 +95,43 @@
       <button onclick="showSection('about')" class="block">About</button>
     </div>
   </nav>
+
+  <!-- TIMER HUD -->
+  <div id="timerDisplay"
+    class="hidden fixed top-20 right-5 bg-black bg-opacity-80 text-white px-4 py-2 rounded-lg font-mono text-xl z-50 shadow-lg border border-emerald-500">
+    Time Left: <span id="timeRemaining">00:00</span>
+  </div>
+
+  <!-- ADMIN PANEL -->
+  <section id="adminPanel" class="hidden py-10 bg-gray-50 border-b">
+    <div class="max-w-4xl mx-auto px-6">
+      <div
+        class="bg-white p-6 rounded-xl shadow border border-emerald-200 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-bold text-emerald-800">Admin Control</h2>
+          <p class="text-sm text-gray-500">Manage Global Exam Timer</p>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2">
+            <label class="font-semibold">Duration (mins):</label>
+            <input id="examDuration" type="number" value="30" class="border p-2 rounded w-20 text-center" min="1">
+          </div>
+
+          <button onclick="adminStartExam()"
+            class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded font-bold shadow transition">
+            START EXAM
+          </button>
+
+          <button onclick="adminStopExam()"
+            class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded font-bold shadow transition">
+            STOP
+          </button>
+        </div>
+      </div>
+      <div id="adminStatus" class="mt-4 text-center font-mono text-emerald-600 font-bold"></div>
+    </div>
+  </section>
 
   <!-- HOME -->
   <section id="home" class="py-20 text-center">
@@ -219,6 +259,98 @@
     let studentName = "";
     let studentPattern = "";
 
+    // NEW: Timer & Admin State
+    const socket = io();
+    let examEndTime = null;
+    let timerInterval = null;
+    let isAdmin = false;
+
+    // Socket Listeners
+    socket.on('connect', () => console.log("Connected to Socket"));
+
+    socket.on('exam-state', (state) => {
+      handleExamState(state);
+    });
+
+    socket.on('exam-started', (state) => {
+      handleExamState(state);
+      if (!isAdmin && el('exam').classList.contains('hidden') === false) {
+        // If student is in exam, ensure they see timer
+      }
+    });
+
+    socket.on('exam-stopped', () => {
+      clearInterval(timerInterval);
+      el('timerDisplay').classList.add('hidden');
+      examEndTime = null;
+      // Optional: Auto submit if stopped? 
+      // For now just stop timer.
+    });
+
+    function handleExamState(state) {
+      if (state.isRunning) {
+        examEndTime = state.endTime;
+        startTimerTicker();
+      } else {
+        examEndTime = null;
+        clearInterval(timerInterval);
+        el('timerDisplay').classList.add('hidden');
+      }
+    }
+
+    function startTimerTicker() {
+      el('timerDisplay').classList.remove('hidden');
+      clearInterval(timerInterval);
+
+      timerInterval = setInterval(() => {
+        const now = Date.now();
+        const diff = examEndTime - now;
+
+        if (diff <= 0) {
+          clearInterval(timerInterval);
+          el('timeRemaining').textContent = "00:00";
+          // Time is up!
+          // If student is on last question, ENABLE submission or Auto Submit
+          checkSubmitRestriction();
+        } else {
+          const m = Math.floor(diff / 60000);
+          const s = Math.floor((diff % 60000) / 1000);
+          el('timeRemaining').textContent = `${m}:${s < 10 ? '0' : ''}${s}`;
+        }
+      }, 1000);
+    }
+
+    // Admin Functions
+    function adminStartExam() {
+      const mins = parseInt(el('examDuration').value) || 30;
+      socket.emit('admin-start-exam', mins);
+      el('adminStatus').textContent = "Exam Started!";
+    }
+
+    function adminStopExam() {
+      socket.emit('admin-stop-exam');
+      el('adminStatus').textContent = "Exam Stopped.";
+    }
+
+    function checkSubmitRestriction() {
+      // If we are at the last question
+      if (currentIndex >= questions.length - 1) {
+        const btn = document.querySelector("#exam button"); // Next/Submit button
+        if (btn) {
+          const timeRemaining = examEndTime && (examEndTime - Date.now() > 0);
+          if (timeRemaining) {
+            btn.disabled = true;
+            btn.textContent = "Wait for Timer...";
+            btn.classList.add("opacity-50", "cursor-not-allowed");
+          } else {
+            btn.disabled = false;
+            btn.textContent = "Finish Exam";
+            btn.classList.remove("opacity-50", "cursor-not-allowed");
+          }
+        }
+      }
+    }
+
     // Init
     document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => el('welcomePopup').classList.remove('hidden'), 500);
@@ -283,9 +415,16 @@
         el('loader').classList.add('hidden');
 
         if (res.ok) {
-          studentName = name;
-          studentPattern = pattern;
-          el('rules').classList.remove('hidden');
+          if (data.role === 'admin') {
+            isAdmin = true;
+            studentName = "Admin";
+            el('adminPanel').classList.remove('hidden');
+            // Hide other sections if needed or just stay on test page
+          } else {
+            studentName = name;
+            studentPattern = pattern;
+            el('rules').classList.remove('hidden');
+          }
         } else {
           alert(data.error || "Login Failed");
           el('login').classList.remove('hidden');
@@ -332,6 +471,17 @@
             </label>
         `).join("")}
     `;
+
+      // Button Text Logic
+      const btn = document.querySelector("#exam button");
+      if (currentIndex === questions.length - 1) {
+        btn.textContent = "Finish Exam";
+        checkSubmitRestriction();
+      } else {
+        btn.textContent = "Next";
+        btn.disabled = false;
+        btn.classList.remove("opacity-50", "cursor-not-allowed");
+      }
     }
 
     function nextQuestion() {
@@ -342,6 +492,13 @@
       currentIndex++;
 
       if (currentIndex >= questions.length) {
+        // Should not happen if button disabled, but double check
+        const timeRemaining = examEndTime && (examEndTime - Date.now() > 0);
+        if (timeRemaining) {
+          currentIndex--; // revert
+          userAnswers.pop();
+          return alert("You must wait for the timer to run out before submitting!");
+        }
         submitExam();
       } else {
         renderQuestion();
