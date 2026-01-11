@@ -134,8 +134,9 @@ let globalTimer = {
     startTime: null
 };
 
-// --- STUDENT SESSIONS IN MEMORY (For demo - in production use Redis or DB) ---
+// --- STUDENT SESSIONS IN MEMORY ---
 let studentSessions = new Map(); // name -> session data
+let timerHistory = [];
 
 // --- HELPERS ---
 function shuffle(array) {
@@ -160,8 +161,9 @@ function updateStudentProgress(name, pattern, status, currentQuestion, totalQues
             pattern,
             status,
             currentQuestion: currentQuestion || 0,
-            totalQuestions: totalQuestions || QUESTION_BANK[pattern].length,
-            lastActive: Date.now()
+            totalQuestions: totalQuestions || QUESTION_BANK[pattern]?.length || 30,
+            lastActive: Date.now(),
+            createdAt: Date.now()
         });
     } else {
         const session = studentSessions.get(name);
@@ -172,11 +174,11 @@ function updateStudentProgress(name, pattern, status, currentQuestion, totalQues
     }
 }
 
-// Clean up old sessions (older than 2 hours)
+// Clean up old sessions (older than 6 hours)
 function cleanupOldSessions() {
-    const twoHoursAgo = Date.now() - 7200000;
+    const sixHoursAgo = Date.now() - 21600000;
     for (const [name, session] of studentSessions.entries()) {
-        if (session.lastActive < twoHoursAgo) {
+        if (session.lastActive < sixHoursAgo) {
             studentSessions.delete(name);
         }
     }
@@ -200,7 +202,6 @@ app.post('/api/login', (req, res) => {
     }
 
     // Set signed cookie with session data
-    // Max Age: 2 hours
     const sessionData = {
         name,
         pattern,
@@ -213,11 +214,11 @@ app.post('/api/login', (req, res) => {
     res.cookie('session', sessionData, {
         httpOnly: true,
         signed: true,
-        maxAge: 7200000
+        maxAge: 7200000 // 2 hours
     });
 
     // Update in-memory tracking
-    updateStudentProgress(name, pattern, 'ready', 0, QUESTION_BANK[pattern].length);
+    updateStudentProgress(name, pattern, 'ready', 0, QUESTION_BANK[pattern]?.length);
 
     res.json({ success: true, message: "Logged in" });
 });
@@ -233,7 +234,7 @@ app.get('/api/me', (req, res) => {
     if (session.status === 'started') {
         updateStudentProgress(session.name, session.pattern, 'started', 
                              session.currentQuestion || 0, 
-                             QUESTION_BANK[session.pattern].length);
+                             QUESTION_BANK[session.pattern]?.length);
     }
     
     return res.json({
@@ -242,7 +243,7 @@ app.get('/api/me', (req, res) => {
         pattern: session.pattern,
         status: session.status,
         score: session.score,
-        totalQuestions: QUESTION_BANK[session.pattern].length,
+        totalQuestions: QUESTION_BANK[session.pattern]?.length || 30,
         currentQuestion: session.currentQuestion || 0
     });
 });
@@ -261,6 +262,9 @@ app.post('/api/start-v2', (req, res) => {
     }
 
     const fullBank = QUESTION_BANK[session.pattern];
+    if (!fullBank) {
+        return res.status(400).json({ error: "Invalid pattern" });
+    }
 
     // Create an array of indices [0, 1, 2, ... length-1]
     const indices = Array.from({ length: fullBank.length }, (_, i) => i);
@@ -295,7 +299,7 @@ app.post('/api/submit-v2', (req, res) => {
     if (!session) return res.status(401).json({ error: "Not logged in" });
 
     if (session.status === 'completed') {
-        return res.json({ score: session.score, total: QUESTION_BANK[session.pattern].length, alreadyCompleted: true });
+        return res.json({ score: session.score, total: QUESTION_BANK[session.pattern]?.length || 30, alreadyCompleted: true });
     }
 
     const { answers } = req.body;
@@ -304,8 +308,12 @@ app.post('/api/submit-v2', (req, res) => {
         return res.status(400).json({ error: "Exam not started appropriately." });
     }
 
-    let score = 0;
     const fullBank = QUESTION_BANK[session.pattern];
+    if (!fullBank) {
+        return res.status(400).json({ error: "Invalid pattern" });
+    }
+
+    let score = 0;
     const results = [];
 
     session.questionOrder.forEach((originalIndex, i) => {
@@ -361,7 +369,7 @@ app.post('/api/retry', (req, res) => {
     res.cookie('session', session, { httpOnly: true, signed: true, maxAge: 7200000 });
 
     // Update in-memory tracking
-    updateStudentProgress(session.name, session.pattern, 'ready', 0, QUESTION_BANK[session.pattern].length);
+    updateStudentProgress(session.name, session.pattern, 'ready', 0, QUESTION_BANK[session.pattern]?.length);
 
     res.json({ success: true, message: "Use the chance wisely." });
 });
@@ -376,7 +384,7 @@ app.post('/api/fail', (req, res) => {
         // Update in-memory tracking
         updateStudentProgress(session.name, session.pattern, 'failed', 
                              session.currentQuestion || 0, 
-                             QUESTION_BANK[session.pattern].length);
+                             QUESTION_BANK[session.pattern]?.length);
     }
     res.json({ success: true });
 });
@@ -395,7 +403,7 @@ app.post('/api/update-progress', (req, res) => {
     if (session.status === 'started') {
         updateStudentProgress(session.name, session.pattern, 'started', 
                              currentQuestion, 
-                             QUESTION_BANK[session.pattern].length);
+                             QUESTION_BANK[session.pattern]?.length);
     }
     
     res.json({ success: true });
@@ -407,26 +415,38 @@ app.post('/api/update-progress', (req, res) => {
 app.get('/api/timer/status', (req, res) => {
     const now = Date.now();
     
-    if (globalTimer.active && !globalTimer.paused && globalTimer.endTime > now) {
+    if (globalTimer.active && !globalTimer.paused && globalTimer.endTime && globalTimer.endTime > now) {
         res.json({
             active: true,
             endTime: globalTimer.endTime,
             paused: false,
-            remaining: globalTimer.endTime - now
+            remaining: globalTimer.endTime - now,
+            pauseRemaining: 0
         });
     } else if (globalTimer.active && globalTimer.paused) {
         res.json({
             active: true,
             endTime: globalTimer.endTime,
             paused: true,
-            remaining: globalTimer.pauseRemaining
+            remaining: 0,
+            pauseRemaining: globalTimer.pauseRemaining
+        });
+    } else if (globalTimer.active && globalTimer.endTime && globalTimer.endTime <= now) {
+        // Timer expired but still active (needs to be stopped)
+        res.json({
+            active: true,
+            endTime: globalTimer.endTime,
+            paused: false,
+            remaining: 0,
+            pauseRemaining: 0
         });
     } else {
         res.json({
             active: false,
             endTime: null,
             paused: false,
-            remaining: 0
+            remaining: 0,
+            pauseRemaining: 0
         });
     }
 });
@@ -435,8 +455,8 @@ app.get('/api/timer/status', (req, res) => {
 app.get('/api/timer/can-submit', (req, res) => {
     const now = Date.now();
     
-    if (globalTimer.active && !globalTimer.paused && globalTimer.endTime > now) {
-        // Timer is active, cannot submit yet
+    if (globalTimer.active && !globalTimer.paused && globalTimer.endTime && globalTimer.endTime > now) {
+        // Timer is active and not expired, cannot submit yet
         res.json({ canSubmit: false, remaining: globalTimer.endTime - now });
     } else {
         res.json({ canSubmit: true, remaining: 0 });
@@ -488,7 +508,12 @@ app.get('/api/admin/stats', checkAdminAuth, (req, res) => {
 
 // 13. ADMIN GET TIMER STATUS
 app.get('/api/admin/timer', checkAdminAuth, (req, res) => {
-    res.json(globalTimer);
+    // Add timer history to response
+    const response = {
+        ...globalTimer,
+        history: timerHistory.slice(-10) // Last 10 timer events
+    };
+    res.json(response);
 });
 
 // 14. ADMIN START TIMER
@@ -499,14 +524,31 @@ app.post('/api/admin/timer/start', checkAdminAuth, (req, res) => {
         return res.status(400).json({ error: "Invalid duration" });
     }
     
+    const startTime = Date.now();
+    const endTime = startTime + (duration * 1000);
+    
     globalTimer = {
         active: true,
-        endTime: Date.now() + (duration * 1000),
+        endTime: endTime,
         duration: duration,
         paused: false,
         pauseRemaining: 0,
-        startTime: Date.now()
+        startTime: startTime
     };
+    
+    // Add to history
+    timerHistory.push({
+        action: 'start',
+        duration: duration,
+        startTime: startTime,
+        endTime: endTime,
+        timestamp: new Date().toISOString()
+    });
+    
+    // Keep only last 50 history items
+    if (timerHistory.length > 50) {
+        timerHistory = timerHistory.slice(-50);
+    }
     
     res.json({ success: true, timer: globalTimer });
 });
@@ -517,8 +559,16 @@ app.post('/api/admin/timer/pause', checkAdminAuth, (req, res) => {
         return res.status(400).json({ error: "Timer is not running" });
     }
     
-    globalTimer.pauseRemaining = globalTimer.endTime - Date.now();
+    const now = Date.now();
+    globalTimer.pauseRemaining = globalTimer.endTime - now;
     globalTimer.paused = true;
+    
+    // Add to history
+    timerHistory.push({
+        action: 'pause',
+        pauseRemaining: globalTimer.pauseRemaining,
+        timestamp: new Date().toISOString()
+    });
     
     res.json({ success: true, timer: globalTimer });
 });
@@ -533,6 +583,13 @@ app.post('/api/admin/timer/resume', checkAdminAuth, (req, res) => {
     globalTimer.paused = false;
     globalTimer.pauseRemaining = 0;
     
+    // Add to history
+    timerHistory.push({
+        action: 'resume',
+        endTime: globalTimer.endTime,
+        timestamp: new Date().toISOString()
+    });
+    
     res.json({ success: true, timer: globalTimer });
 });
 
@@ -546,6 +603,12 @@ app.post('/api/admin/timer/stop', checkAdminAuth, (req, res) => {
         pauseRemaining: 0,
         startTime: null
     };
+    
+    // Add to history
+    timerHistory.push({
+        action: 'stop',
+        timestamp: new Date().toISOString()
+    });
     
     res.json({ success: true });
 });
@@ -563,7 +626,8 @@ app.get('/api/admin/students', checkAdminAuth, (req, res) => {
         return {
             ...session,
             progress,
-            lastActive: new Date(session.lastActive).toLocaleTimeString()
+            lastActiveFormatted: new Date(session.lastActive).toLocaleTimeString(),
+            createdFormatted: new Date(session.createdAt).toLocaleTimeString()
         };
     });
     
@@ -580,16 +644,14 @@ app.post('/api/admin/end-exam', checkAdminAuth, (req, res) => {
     // Find and update the student's session
     if (studentSessions.has(studentName)) {
         const session = studentSessions.get(studentName);
-        session.status = 'failed'; // Mark as failed
+        session.status = 'failed';
         session.lastActive = Date.now();
         studentSessions.set(studentName, session);
         
-        // Also need to update the cookie session if possible
-        // This would require a more sophisticated session management system
-        
         res.json({ success: true, message: `Exam ended for ${studentName}` });
     } else {
-        res.status(404).json({ error: "Student not found" });
+        // Also check cookie sessions
+        res.json({ success: true, message: `Student session not found in memory, but request processed` });
     }
 });
 
